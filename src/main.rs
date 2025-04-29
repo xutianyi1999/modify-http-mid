@@ -76,6 +76,8 @@ async fn proxy(
     req: Request<Incoming>
 ) -> Result<Response<Either<Incoming, String>>> {
     let (parts, body) = req.into_parts();
+    println!("{:?}", parts);
+
     let path = parts.uri.path();
     let body = body.collect().await?.aggregate();
     let body = body.reader();
@@ -107,7 +109,6 @@ async fn proxy(
     let stream = TokioIo::new(stream);
     let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await?;
     tokio::spawn(conn);
-
 
     let req = Request::from_parts(parts, serde_json::to_string(&body)?);
     let resp = sender.send_request(req).await?;
