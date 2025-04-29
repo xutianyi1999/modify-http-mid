@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate log;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Parser;
 use http_body_util::{BodyExt, Either};
 use hyper::body::Buf;
@@ -109,17 +109,14 @@ async fn proxy(
     let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await?;
     tokio::spawn(conn);
 
+    let send_body = serde_json::to_string(&body)?;
     parts.headers.insert("host", ctx.dst.parse()?);
+    parts.headers.insert("content-length", send_body.len().to_string().parse()?);
+
     println!("parts: {:?}, body: {:?}", parts, body);
-    let req = Request::from_parts(parts, serde_json::to_string(&body)?);
+    let req = Request::from_parts(parts, send_body);
     println!("before send_request");
-    let resp = match sender.send_request(req).await {
-        Ok(resp) => resp,
-        Err(e) => {
-            error!("{}", e);
-            return Err(anyhow!(e))
-        }
-    };
+    let resp = sender.send_request(req).await?;
     println!("after send_request");
     Ok(resp.map(|v| Either::Left(v)))
 }
