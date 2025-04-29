@@ -115,7 +115,10 @@ async fn proxy(
     println!("before send_request");
     let resp = match sender.send_request(req).await {
         Ok(resp) => resp,
-        Err(e) => return Err(anyhow!(e))
+        Err(e) => {
+            error!("{}", e);
+            return Err(anyhow!(e))
+        }
     };
     println!("after send_request");
     Ok(resp.map(|v| Either::Left(v)))
