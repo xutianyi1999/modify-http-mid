@@ -75,8 +75,7 @@ async fn proxy(
     ctx: &Arc<Context>,
     req: Request<Incoming>
 ) -> Result<Response<Either<Incoming, String>>> {
-    let (parts, body) = req.into_parts();
-    println!("{:?}", parts);
+    let (mut parts, body) = req.into_parts();
 
     let path = parts.uri.path();
     let body = body.collect().await?.aggregate();
@@ -110,6 +109,7 @@ async fn proxy(
     let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await?;
     tokio::spawn(conn);
 
+    parts.headers.insert("host", ctx.dst.parse()?);
     let req = Request::from_parts(parts, serde_json::to_string(&body)?);
     let resp = sender.send_request(req).await?;
     Ok(resp.map(|v| Either::Left(v)))
