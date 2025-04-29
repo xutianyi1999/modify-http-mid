@@ -110,8 +110,11 @@ async fn proxy(
     tokio::spawn(conn);
 
     parts.headers.insert("host", ctx.dst.parse()?);
+    println!("parts: {:?}, body: {:?}", parts, body);
     let req = Request::from_parts(parts, serde_json::to_string(&body)?);
+    println!("before send_request");
     let resp = sender.send_request(req).await?;
+    println!("after send_request");
     Ok(resp.map(|v| Either::Left(v)))
 }
 
