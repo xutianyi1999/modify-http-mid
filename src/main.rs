@@ -21,6 +21,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use std::str::FromStr;
 use std::sync::Arc;
+use hyper::header::HeaderValue;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
 
@@ -39,9 +40,7 @@ struct Args {
 
 #[derive(Deserialize)]
 enum Action {
-    Insert {
-        data: Map<String, Value>
-    }
+    Insert(Map<String, Value>)
 }
 
 #[derive(Deserialize)]
@@ -95,9 +94,7 @@ async fn proxy(
     for record in ctx.records.iter() {
         if path.starts_with(&record.path_prefix) {
             match &record.action {
-                Action::Insert {
-                    data: record_data
-                } => {
+                Action::Insert(record_data) => {
                     body_insert(&mut body, record_data);
                 }
             }
@@ -111,13 +108,10 @@ async fn proxy(
 
     let send_body = serde_json::to_string(&body)?;
     parts.headers.insert("host", ctx.dst.parse()?);
-    parts.headers.insert("content-length", send_body.len().to_string().parse()?);
+    parts.headers.insert("content-length", HeaderValue::from(send_body.len()));
 
-    println!("parts: {:?}, body: {:?}", parts, body);
     let req = Request::from_parts(parts, send_body);
-    println!("before send_request");
     let resp = sender.send_request(req).await?;
-    println!("after send_request");
     Ok(resp.map(|v| Either::Left(v)))
 }
 
